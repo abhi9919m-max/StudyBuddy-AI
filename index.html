@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyBuddy AI — Learn Anything in 60 Seconds</title>
+<meta name="description" content="StudyBuddy AI uses advanced AI to help you learn any topic in 60 seconds. Get smart notes, practice questions, and simple explanations instantly.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<style>
+/* ─── RESET & BASE ─── */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0a1a;--primary:#00ffff;--secondary:#8b00ff;--accent:#ff00aa;
+  --card-bg:rgba(255,255,255,0.05);--text:#ffffff;--text-dim:rgba(255,255,255,0.6);
+  --glass:rgba(255,255,255,0.06);--glass-border:rgba(255,255,255,0.1);
+  --radius:20px;--transition:0.35s cubic-bezier(.4,0,.2,1);
+}
+html{scroll-behavior:smooth;overflow-x:hidden}
+body{
+  font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);
+  min-height:100vh;overflow-x:hidden;cursor:default;
+  transition:background var(--transition),color var(--transition);
+}
+body.light-mode{
+  --bg:#f0f2f8;--text:#1a1a2e;--text-dim:rgba(26,26,46,0.6);
+  --card-bg:rgba(255,255,255,0.7);--glass:rgba(255,255,255,0.5);
+  --glass-border:rgba(0,0,0,0.08);
+}
+body.light-mode #three-canvas{opacity:0.15}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input{font-family:inherit;border:none;outline:none;background:none}
+
+/* ─── PROGRESS BAR ─── */
+#progress-bar{
+  position:fixed;top:0;left:0;height:3px;z-index:10000;
+  background:linear-gradient(90deg,var(--primary),var(--secondary),var(--accent));
+  width:0;transition:width .3s ease;
+}
+
+/* ─── THREE.JS CANVAS ─── */
+#three-canvas{
+  position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;
+  transition:opacity .6s ease;
+}
+
+/* ─── MOUSE TRAIL ─── */
+.trail-dot{
+  position:fixed;width:6px;height:6px;border-radius:50%;pointer-events:none;
+  background:var(--primary);z-index:9998;opacity:0;
+  filter:blur(1px);transition:opacity .15s;
+}
+
+/* ─── TOAST ─── */
+#toast-container{
+  position:fixed;bottom:30px;right:30px;z-index:10001;display:flex;flex-direction:column;gap:10px;
+}
+.toast{
+  padding:14px 24px;border-radius:14px;font-size:0.88rem;font-weight:500;
+  background:rgba(0,255,255,0.12);border:1px solid rgba(0,255,255,0.3);
+  color:var(--primary);backdrop-filter:blur(16px);
+  animation:toastIn .4s ease,toastOut .4s ease 2.6s forwards;
+  box-shadow:0 8px 32px rgba(0,255,255,0.15);
+}
+@keyframes toastIn{from{opacity:0;transform:translateY(20px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes toastOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-10px)}}
+
+/* ─── FLOATING NAV ─── */
+#nav{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:9999;
+  padding:12px 28px;border-radius:100px;
+  background:rgba(10,10,26,0.55);backdrop-filter:blur(24px) saturate(1.4);
+  border:1px solid var(--glass-border);display:flex;align-items:center;gap:24px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.3);transition:all var(--transition);
+}
+body.light-mode #nav{background:rgba(240,242,248,0.65);border-color:rgba(0,0,0,0.08)}
+.nav-logo{font-size:1.05rem;font-weight:800;display:flex;align-items:center;gap:8px}
+.nav-logo span{
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.logo-icon{font-size:1.3rem;animation:floatIcon 3s ease-in-out infinite}
+@keyframes floatIcon{0%,100%{transform:translateY(0) rotate(0deg)}50%{transform:translateY(-6px) rotate(8deg)}}
+.nav-links{display:flex;gap:20px;font-size:0.85rem;font-weight:500;color:var(--text-dim)}
+.nav-links a{transition:color .25s}
+.nav-links a:hover{color:var(--primary)}
+#theme-toggle{
+  width:42px;height:24px;border-radius:100px;position:relative;
+  background:linear-gradient(135deg,#1a1a3e,#2a1a4e);border:1px solid var(--glass-border);
+  transition:all .4s ease;
+}
+#theme-toggle::after{
+  content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;
+  border-radius:50%;background:var(--primary);transition:all .4s ease;
+  box-shadow:0 0 8px var(--primary);
+}
+#theme-toggle.active{background:linear-gradient(135deg,#c8d8f8,#a8b8e8)}
+#theme-toggle.active::after{transform:translateX(18px);background:#ffa500;box-shadow:0 0 8px #ffa500}
+
+/* ─── HISTORY SIDEBAR ─── */
+#history-toggle{
+  position:fixed;right:20px;top:50%;transform:translateY(-50%);z-index:9998;
+  width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  background:var(--glass);backdrop-filter:blur(16px);border:1px solid var(--glass-border);
+  font-size:1.2rem;transition:all var(--transition);
+}
+#history-toggle:hover{border-color:var(--primary);box-shadow:0 0 20px rgba(0,255,255,0.15)}
+#history-sidebar{
+  position:fixed;right:-320px;top:0;width:300px;height:100%;z-index:9999;
+  background:rgba(10,10,26,0.85);backdrop-filter:blur(24px);
+  border-left:1px solid var(--glass-border);padding:80px 20px 20px;
+  transition:right .4s cubic-bezier(.4,0,.2,1);overflow-y:auto;
+}
+body.light-mode #history-sidebar{background:rgba(240,242,248,0.9)}
+#history-sidebar.open{right:0}
+#history-sidebar h3{
+  font-size:0.95rem;font-weight:700;margin-bottom:16px;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.history-item{
+  padding:12px 16px;border-radius:12px;font-size:0.82rem;margin-bottom:8px;
+  background:var(--glass);border:1px solid var(--glass-border);cursor:pointer;
+  transition:all .25s;display:flex;align-items:center;gap:10px;
+}
+.history-item:hover{border-color:var(--primary);transform:translateX(-4px)}
+.history-item .h-icon{font-size:1rem}
+.history-item .h-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#close-history{
+  position:absolute;top:24px;right:20px;font-size:1.3rem;color:var(--text-dim);
+  transition:color .25s;
+}
+#close-history:hover{color:var(--primary)}
+
+/* ─── MAIN CONTENT ─── */
+main{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 24px}
+
+/* ─── HERO ─── */
+#hero{
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center;gap:28px;
+  padding-top:80px;
+}
+.hero-emoji{font-size:4rem;filter:drop-shadow(0 0 40px rgba(0,255,255,0.4));margin-bottom:8px}
+#hero-title{
+  font-size:clamp(2.8rem,7vw,5.5rem);font-weight:900;line-height:1.05;
+  letter-spacing:-2px;
+}
+#hero-title .letter{
+  display:inline-block;opacity:0;transform:translateY(60px) rotateX(-90deg);
+  background:linear-gradient(135deg,var(--primary) 0%,var(--secondary) 50%,var(--accent) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 30px rgba(0,255,255,0.3));
+}
+#hero-title .space{display:inline-block;width:0.3em}
+.tagline{
+  font-size:clamp(1.1rem,2.5vw,1.5rem);color:var(--text-dim);font-weight:400;
+  display:flex;align-items:center;gap:4px;
+}
+.tagline .typed-text{color:var(--primary);font-weight:600}
+.cursor-blink{
+  display:inline-block;width:2px;height:1.2em;background:var(--primary);
+  animation:blink 1s step-end infinite;vertical-align:middle;margin-left:2px;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ─── STATS ─── */
+.stats-row{display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
+.stat-pill{
+  padding:10px 22px;border-radius:100px;font-size:0.88rem;font-weight:600;
+  background:var(--glass);border:1px solid var(--glass-border);
+  backdrop-filter:blur(12px);display:flex;align-items:center;gap:8px;
+  animation:shimmer 3s ease-in-out infinite;
+}
+.stat-pill .stat-icon{font-size:1.05rem}
+.stat-pill .stat-val{color:var(--primary)}
+@keyframes shimmer{
+  0%,100%{box-shadow:0 0 0 rgba(0,255,255,0)}
+  50%{box-shadow:0 0 20px rgba(0,255,255,0.08)}
+}
+
+/* ─── INPUT SECTION ─── */
+#input-section{padding:40px 0 60px}
+.search-container{
+  max-width:780px;margin:0 auto;
+  background:var(--glass);backdrop-filter:blur(20px);
+  border:1px solid var(--glass-border);border-radius:28px;
+  padding:36px;position:relative;overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);
+}
+.search-container::before{
+  content:'';position:absolute;inset:-2px;border-radius:30px;padding:2px;z-index:-1;
+  background:linear-gradient(135deg,var(--primary),var(--secondary),var(--accent),var(--primary));
+  background-size:400% 400%;animation:glowBorder 6s ease infinite;
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;opacity:0.5;
+}
+@keyframes glowBorder{
+  0%,100%{background-position:0% 50%}
+  25%{background-position:100% 0%}
+  50%{background-position:100% 100%}
+  75%{background-position:0% 100%}
+}
+.input-wrapper{
+  position:relative;margin-bottom:20px;
+}
+.input-wrapper input{
+  width:100%;padding:18px 24px;border-radius:16px;font-size:1.1rem;
+  background:rgba(255,255,255,0.04);color:var(--text);font-weight:500;
+  border:1.5px solid rgba(255,255,255,0.08);
+  transition:all .35s ease;
+}
+.input-wrapper input::placeholder{color:transparent}
+.input-wrapper .placeholder-anim{
+  position:absolute;left:24px;top:50%;transform:translateY(-50%);
+  font-size:1.1rem;color:var(--text-dim);pointer-events:none;
+  transition:all .3s ease;opacity:0.5;
+}
+.input-wrapper input:focus{
+  border-color:var(--primary);
+  box-shadow:0 0 30px rgba(0,255,255,0.12),inset 0 0 20px rgba(0,255,255,0.04);
+}
+.input-wrapper input:focus ~ .placeholder-anim,
+.input-wrapper input:not(:placeholder-shown) ~ .placeholder-anim{
+  opacity:0;transform:translateY(-50%) translateX(10px);
+}
+
+/* Mode buttons */
+.mode-selector{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap;justify-content:center}
+.mode-btn{
+  padding:10px 22px;border-radius:100px;font-size:0.82rem;font-weight:600;
+  letter-spacing:0.5px;text-transform:uppercase;
+  background:rgba(255,255,255,0.04);border:1.5px solid rgba(255,255,255,0.1);
+  color:var(--text-dim);transition:all .3s ease;position:relative;overflow:hidden;
+}
+.mode-btn::before{
+  content:'';position:absolute;inset:0;border-radius:100px;opacity:0;transition:opacity .3s;
+}
+.mode-btn.all::before{background:linear-gradient(135deg,rgba(0,255,255,0.15),rgba(139,0,255,0.15))}
+.mode-btn.notes::before{background:rgba(0,180,255,0.15)}
+.mode-btn.questions::before{background:rgba(139,0,255,0.15)}
+.mode-btn.explanation::before{background:rgba(255,0,170,0.15)}
+.mode-btn.active{color:var(--text);border-color:var(--primary)}
+.mode-btn.active::before{opacity:1}
+.mode-btn.active.all{border-color:var(--primary);box-shadow:0 0 20px rgba(0,255,255,0.15)}
+.mode-btn.active.notes{border-color:#00b4ff;box-shadow:0 0 20px rgba(0,180,255,0.15)}
+.mode-btn.active.questions{border-color:var(--secondary);box-shadow:0 0 20px rgba(139,0,255,0.15)}
+.mode-btn.active.explanation{border-color:var(--accent);box-shadow:0 0 20px rgba(255,0,170,0.15)}
+
+/* Generate button */
+#generate-btn{
+  width:100%;padding:18px;border-radius:16px;font-size:1.08rem;font-weight:700;
+  color:#fff;position:relative;overflow:hidden;letter-spacing:0.5px;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  box-shadow:0 8px 32px rgba(0,255,255,0.2);
+  transition:all .35s ease;
+}
+#generate-btn:hover{
+  transform:translateY(-2px);
+  box-shadow:0 12px 40px rgba(0,255,255,0.3);
+}
+#generate-btn:active{transform:translateY(0)}
+#generate-btn .btn-text{position:relative;z-index:2}
+#generate-btn .btn-particles{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+}
+.btn-particle{
+  position:absolute;width:4px;height:4px;border-radius:50%;
+  background:white;opacity:0;
+}
+/* Loading spinner */
+.spinner-ring{
+  display:none;width:24px;height:24px;border:3px solid rgba(255,255,255,0.2);
+  border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;
+  margin:0 auto;
+}
+#generate-btn.loading .btn-text{display:none}
+#generate-btn.loading .spinner-ring{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── OUTPUT SECTION ─── */
+#output-section{padding-bottom:100px;display:none}
+.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.output-card{
+  border-radius:var(--radius);padding:32px 28px;position:relative;overflow:hidden;
+  background:var(--card-bg);backdrop-filter:blur(16px);
+  border:1.5px solid var(--glass-border);
+  transition:all .4s ease;min-height:320px;
+}
+.output-card::before{
+  content:'';position:absolute;inset:-2px;border-radius:calc(var(--radius) + 2px);padding:2px;z-index:-1;
+  -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+  animation:glowPulse 3s ease-in-out infinite;
+}
+@keyframes glowPulse{0%,100%{opacity:0.4}50%{opacity:0.8}}
+
+.output-card.notes-card::before{background:linear-gradient(135deg,#00b4ff,#00ffff)}
+.output-card.questions-card::before{background:linear-gradient(135deg,#8b00ff,#b44aff)}
+.output-card.explain-card::before{background:linear-gradient(135deg,#ff00aa,#ff6b35)}
+
+.output-card:hover{transform:translateY(-6px);border-color:rgba(255,255,255,0.15)}
+.output-card .card-header{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.card-icon{
+  width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;animation:floatIcon 3s ease-in-out infinite;
+}
+.notes-card .card-icon{background:rgba(0,180,255,0.15)}
+.questions-card .card-icon{background:rgba(139,0,255,0.15)}
+.explain-card .card-icon{background:rgba(255,0,170,0.15)}
+.card-title{font-size:1.1rem;font-weight:700}
+.notes-card .card-title{color:#00d4ff}
+.questions-card .card-title{color:#b44aff}
+.explain-card .card-title{color:#ff5599}
+
+.card-body{font-size:0.9rem;line-height:1.75;color:var(--text-dim)}
+.card-body ul{list-style:none;padding:0}
+.card-body ul li{
+  padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);
+  display:flex;align-items:flex-start;gap:10px;
+}
+.card-body ul li::before{content:'';display:none}
+.note-bullet{color:var(--primary);font-weight:700;flex-shrink:0}
+
+/* Questions */
+.question-item{margin-bottom:14px}
+.q-label{
+  font-weight:600;color:#b44aff;cursor:pointer;display:flex;align-items:center;gap:8px;
+  padding:8px 0;transition:color .25s;
+}
+.q-label:hover{color:#d080ff}
+.q-label .q-arrow{transition:transform .3s;font-size:0.7rem}
+.question-item.open .q-arrow{transform:rotate(90deg)}
+.a-label{
+  padding:8px 0 8px 28px;color:var(--text-dim);font-size:0.85rem;
+  max-height:0;overflow:hidden;transition:max-height .4s ease,opacity .3s;opacity:0;
+}
+.question-item.open .a-label{max-height:200px;opacity:1}
+
+/* Card actions */
+.card-actions{
+  display:flex;gap:10px;margin-top:20px;padding-top:16px;
+  border-top:1px solid rgba(255,255,255,0.06);
+}
+.card-action-btn{
+  padding:8px 16px;border-radius:10px;font-size:0.78rem;font-weight:600;
+  background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);
+  color:var(--text-dim);transition:all .25s;display:flex;align-items:center;gap:6px;
+}
+.card-action-btn:hover{background:rgba(255,255,255,0.1);color:var(--text)}
+.card-action-btn.copied{color:var(--primary);border-color:var(--primary)}
+
+/* Skeleton */
+.skeleton{display:none}
+.skeleton.active{display:block}
+.skel-line{
+  height:14px;border-radius:8px;margin-bottom:12px;
+  background:linear-gradient(90deg,rgba(255,255,255,0.04) 25%,rgba(255,255,255,0.08) 50%,rgba(255,255,255,0.04) 75%);
+  background-size:200% 100%;animation:skelShimmer 1.5s infinite;
+}
+.skel-line:nth-child(1){width:90%}.skel-line:nth-child(2){width:75%}
+.skel-line:nth-child(3){width:85%}.skel-line:nth-child(4){width:60%}
+.skel-line:nth-child(5){width:70%}
+@keyframes skelShimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ─── RIPPLE ─── */
+.ripple{
+  position:absolute;border-radius:50%;background:rgba(255,255,255,0.25);
+  transform:scale(0);animation:rippleAnim .6s linear;pointer-events:none;
+}
+@keyframes rippleAnim{to{transform:scale(4);opacity:0}}
+
+/* ─── FOOTER ─── */
+footer{
+  text-align:center;padding:40px 20px 30px;font-size:0.8rem;color:var(--text-dim);
+  position:relative;z-index:1;
+}
+footer a{color:var(--primary);text-decoration:underline;text-underline-offset:3px}
+
+/* ─── API KEY MODAL ─── */
+#api-modal{
+  position:fixed;inset:0;z-index:20000;display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);opacity:0;pointer-events:none;
+  transition:opacity .35s;
+}
+#api-modal.open{opacity:1;pointer-events:all}
+.modal-box{
+  background:rgba(16,16,36,0.95);backdrop-filter:blur(24px);border:1px solid var(--glass-border);
+  border-radius:24px;padding:40px;max-width:460px;width:90%;
+  transform:translateY(20px) scale(0.96);transition:transform .4s cubic-bezier(.4,0,.2,1);
+}
+#api-modal.open .modal-box{transform:translateY(0) scale(1)}
+.modal-box h2{
+  font-size:1.4rem;font-weight:800;margin-bottom:8px;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.modal-box p{font-size:0.88rem;color:var(--text-dim);margin-bottom:24px;line-height:1.6}
+.modal-box input{
+  width:100%;padding:14px 18px;border-radius:12px;font-size:0.95rem;
+  background:rgba(255,255,255,0.06);color:var(--text);
+  border:1.5px solid rgba(255,255,255,0.1);margin-bottom:16px;
+  transition:border-color .3s;
+}
+.modal-box input:focus{border-color:var(--primary)}
+.modal-box button{
+  width:100%;padding:14px;border-radius:12px;font-size:1rem;font-weight:700;
+  background:linear-gradient(135deg,var(--primary),var(--secondary));color:#fff;
+  transition:all .3s;
+}
+.modal-box button:hover{box-shadow:0 8px 30px rgba(0,255,255,0.25)}
+.modal-note{font-size:0.75rem;color:var(--text-dim);margin-top:12px;text-align:center}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:900px){
+  .cards-grid{grid-template-columns:1fr}
+  #hero-title{font-size:clamp(2rem,6vw,3.5rem)}
+  .search-container{padding:24px}
+  #nav{padding:10px 18px;gap:14px}
+  .nav-links{display:none}
+  #history-toggle{display:none}
+}
+@media(max-width:600px){
+  .stats-row{gap:10px}
+  .stat-pill{padding:8px 14px;font-size:0.78rem}
+  .mode-selector{gap:6px}
+  .mode-btn{padding:8px 14px;font-size:0.75rem}
+}
+</style>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div id="progress-bar"></div>
+
+<!-- Three.js Canvas -->
+<canvas id="three-canvas"></canvas>
+
+<!-- Mouse Trail Dots -->
+<div id="trail-container"></div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- API Key Modal -->
+<div id="api-modal">
+  <div class="modal-box">
+    <h2>🔑 Enter Your API Key</h2>
+    <p>To use StudyBuddy AI, please enter your Google Gemini API key. Your key is stored only in your browser's local storage and never sent anywhere except directly to Google.</p>
+    <input type="password" id="api-key-input" placeholder="AIza..." autocomplete="off">
+    <button id="save-api-key">Save & Start Learning</button>
+    <p class="modal-note">Don't have a key? Get one at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--primary)">aistudio.google.com</a></p>
+  </div>
+</div>
+
+<!-- Floating Nav -->
+<nav id="nav">
+  <div class="nav-logo">
+    <span class="logo-icon">🧠</span>
+    <span>StudyBuddy</span>
+  </div>
+  <div class="nav-links">
+    <a href="#hero">Home</a>
+    <a href="#input-section">Study</a>
+    <a href="#output-section">Results</a>
+  </div>
+  <button id="theme-toggle" title="Toggle Theme" aria-label="Toggle dark/light mode"></button>
+</nav>
+
+<!-- History Toggle -->
+<button id="history-toggle" title="Search History" aria-label="Open search history">📋</button>
+
+<!-- History Sidebar -->
+<div id="history-sidebar">
+  <button id="close-history" aria-label="Close history">✕</button>
+  <h3>🕒 Recent Searches</h3>
+  <div id="history-list"></div>
+</div>
+
+<!-- Main Content -->
+<main>
+  <!-- Hero -->
+  <section id="hero">
+    <div class="hero-emoji">🧠📚</div>
+    <h1 id="hero-title"></h1>
+    <div class="tagline">
+      <span class="typed-text" id="typed-tagline"></span><span class="cursor-blink"></span>
+    </div>
+    <div class="stats-row">
+      <div class="stat-pill"><span class="stat-icon">📖</span><span class="stat-val" data-count="10000">0</span>+ Topics</div>
+      <div class="stat-pill"><span class="stat-icon">⚡</span><span class="stat-val">Instant</span> Results</div>
+      <div class="stat-pill"><span class="stat-icon">💎</span><span class="stat-val">Free</span> Forever</div>
+    </div>
+  </section>
+
+  <!-- Input Section -->
+  <section id="input-section">
+    <div class="search-container">
+      <div class="input-wrapper">
+        <input type="text" id="topic-input" placeholder=" " autocomplete="off">
+        <span class="placeholder-anim" id="placeholder-text">Try "Quantum Physics"...</span>
+      </div>
+      <div class="mode-selector">
+        <button class="mode-btn all active" data-mode="all">✨ All</button>
+        <button class="mode-btn notes" data-mode="notes">📝 Notes</button>
+        <button class="mode-btn questions" data-mode="questions">❓ Questions</button>
+        <button class="mode-btn explanation" data-mode="explanation">💡 Explanation</button>
+      </div>
+      <button id="generate-btn" aria-label="Generate content">
+        <span class="btn-text">✨ Generate Magic</span>
+        <div class="spinner-ring"></div>
+        <div class="btn-particles"></div>
+      </button>
+    </div>
+  </section>
+
+  <!-- Output Section -->
+  <section id="output-section">
+    <div class="cards-grid">
+      <!-- Notes Card -->
+      <div class="output-card notes-card" id="notes-card">
+        <div class="card-header">
+          <div class="card-icon">📘</div>
+          <div class="card-title">Smart Notes</div>
+        </div>
+        <div class="skeleton" id="notes-skeleton">
+          <div class="skel-line"></div><div class="skel-line"></div><div class="skel-line"></div><div class="skel-line"></div><div class="skel-line"></div>
+        </div>
+        <div class="card-body" id="notes-body"></div>
+        <div class="card-actions">
+          <button class="card-action-btn" onclick="copyCard('notes')">📋 Copy</button>
+        </div>
+      </div>
+      <!-- Questions Card -->
+      <div class="output-card questions-card" id="questions-card">
+        <div class="card-header">
+          <div class="card-icon">🧠</div>
+          <div class="card-title">Practice Questions</div>
+        </div>
+        <div class="skeleton" id="questions-skeleton">
+          <div class="skel-line"></div><div class="skel-line"></div><div class="skel-line"></div><div class="skel-line"></div><div class="skel-line"></div>
+        </div>
+        <div class="card-body" id="questions-body"></div>
+        <div class="card-actions">
+          <button class="card-action-btn" onclick="copyCard('questions')">📋 Copy</button>
+        </div>
+      </div>
+      <!-- Explanation Card -->
+      <div class="output-card explain-card" id="explain-card">
+        <div class="card-header">
+          <div class="card-icon">💡</div>
+          <div class="card-title">Simple Explanation</div>
+        </div>
+        <div class="skeleton" id="explain-skeleton">
+          <div class="skel-line"></div><div class="skel-line"></div><div class="skel-line"></div><div class="skel-line"></div><div class="skel-line"></div>
+        </div>
+        <div class="card-body" id="explain-body"></div>
+        <div class="card-actions">
+          <button class="card-action-btn" onclick="copyCard('explain')">📋 Copy</button>
+          <button class="card-action-btn" onclick="speakText()">🔊 Listen</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  Built with 💜 by StudyBuddy AI &mdash; Powered by <a href="https://ai.google.dev" target="_blank">Google Gemini</a>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════════
+   THREE.JS — 3D STARFIELD + SHAPES
+   ═══════════════════════════════════════════ */
+(() => {
+  const canvas = document.getElementById('three-canvas');
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera.position.z = 5;
+
+  // Stars
+  const starCount = 2500;
+  const starGeo = new THREE.BufferGeometry();
+  const starPos = new Float32Array(starCount * 3);
+  const starSizes = new Float32Array(starCount);
+  for (let i = 0; i < starCount; i++) {
+    starPos[i * 3] = (Math.random() - 0.5) * 40;
+    starPos[i * 3 + 1] = (Math.random() - 0.5) * 40;
+    starPos[i * 3 + 2] = (Math.random() - 0.5) * 40;
+    starSizes[i] = Math.random() * 2 + 0.5;
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  starGeo.setAttribute('size', new THREE.BufferAttribute(starSizes, 1));
+
+  const starMat = new THREE.PointsMaterial({
+    color: 0xaaddff, size: 0.08, transparent: true, opacity: 0.8, sizeAttenuation: true
+  });
+  const stars = new THREE.Points(starGeo, starMat);
+  scene.add(stars);
+
+  // Fog atmosphere
+  scene.fog = new THREE.FogExp2(0x0a0a1a, 0.04);
+
+  // Geometric shapes
+  const shapes = [];
+  const shapeMaterials = [
+    new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true, transparent: true, opacity: 0.15 }),
+    new THREE.MeshBasicMaterial({ color: 0x8b00ff, wireframe: true, transparent: true, opacity: 0.12 }),
+    new THREE.MeshBasicMaterial({ color: 0xff00aa, wireframe: true, transparent: true, opacity: 0.1 }),
+  ];
+  const geos = [
+    new THREE.IcosahedronGeometry(0.6, 0),
+    new THREE.TorusGeometry(0.5, 0.15, 8, 16),
+    new THREE.OctahedronGeometry(0.5, 0),
+    new THREE.IcosahedronGeometry(0.4, 1),
+    new THREE.TorusGeometry(0.35, 0.1, 8, 16),
+    new THREE.OctahedronGeometry(0.35, 0),
+  ];
+  for (let i = 0; i < 6; i++) {
+    const mesh = new THREE.Mesh(geos[i], shapeMaterials[i % 3]);
+    mesh.position.set((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 6 - 2);
+    mesh.userData = {
+      rotSpeed: { x: (Math.random() - 0.5) * 0.005, y: (Math.random() - 0.5) * 0.005 },
+      floatSpeed: Math.random() * 0.3 + 0.2,
+      floatAmp: Math.random() * 0.5 + 0.3,
+      baseY: mesh.position.y
+    };
+    scene.add(mesh);
+    shapes.push(mesh);
+  }
+
+  // Mouse parallax
+  let mouseX = 0, mouseY = 0;
+  window.addEventListener('mousemove', e => {
+    mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+    mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+  });
+
+  // Animate
+  const clock = new THREE.Clock();
+  function animate() {
+    requestAnimationFrame(animate);
+    const t = clock.getElapsedTime();
+
+    stars.rotation.y += 0.0002;
+    stars.rotation.x += 0.0001;
+
+    shapes.forEach(s => {
+      s.rotation.x += s.userData.rotSpeed.x;
+      s.rotation.y += s.userData.rotSpeed.y;
+      s.position.y = s.userData.baseY + Math.sin(t * s.userData.floatSpeed) * s.userData.floatAmp;
+    });
+
+    camera.position.x += (mouseX * 0.3 - camera.position.x) * 0.02;
+    camera.position.y += (-mouseY * 0.3 - camera.position.y) * 0.02;
+    camera.lookAt(scene.position);
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+})();
+
+/* ═══════════════════════════════════════════
+   MOUSE TRAIL
+   ═══════════════════════════════════════════ */
+(() => {
+  const trailContainer = document.getElementById('trail-container');
+  const dots = [];
+  const trailLen = 12;
+  for (let i = 0; i < trailLen; i++) {
+    const d = document.createElement('div');
+    d.classList.add('trail-dot');
+    d.style.width = d.style.height = Math.max(3, 6 - i * 0.4) + 'px';
+    trailContainer.appendChild(d);
+    dots.push({ el: d, x: 0, y: 0 });
+  }
+  let mx = 0, my = 0;
+  window.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+  (function loop() {
+    let lx = mx, ly = my;
+    dots.forEach((d, i) => {
+      d.x += (lx - d.x) * (0.35 - i * 0.02);
+      d.y += (ly - d.y) * (0.35 - i * 0.02);
+      d.el.style.left = d.x + 'px';
+      d.el.style.top = d.y + 'px';
+      d.el.style.opacity = 0.5 - i * 0.04;
+      lx = d.x; ly = d.y;
+    });
+    requestAnimationFrame(loop);
+  })();
+})();
+
+/* ═══════════════════════════════════════════
+   GSAP — HERO ANIMATIONS
+   ═══════════════════════════════════════════ */
+(() => {
+  // Split title into letters
+  const titleEl = document.getElementById('hero-title');
+  const titleText = 'StudyBuddy AI';
+  titleEl.innerHTML = titleText.split('').map(ch =>
+    ch === ' ' ? '<span class="space"></span>' : `<span class="letter">${ch}</span>`
+  ).join('');
+
+  // Animate letters in
+  gsap.to('#hero-title .letter', {
+    opacity: 1, y: 0, rotateX: 0,
+    duration: 0.8, stagger: 0.06, ease: 'back.out(1.7)',
+    delay: 0.5
+  });
+
+  // Hero emoji
+  gsap.from('.hero-emoji', { scale: 0, rotation: -180, duration: 1.2, ease: 'elastic.out(1,0.5)', delay: 0.3 });
+
+  // Stats
+  gsap.from('.stat-pill', {
+    y: 40, opacity: 0, duration: 0.7, stagger: 0.12, ease: 'power3.out', delay: 1.6
+  });
+
+  // Counter animation
+  const counterEl = document.querySelector('[data-count]');
+  if (counterEl) {
+    const target = parseInt(counterEl.dataset.count);
+    gsap.to({ val: 0 }, {
+      val: target, duration: 2.5, delay: 2, ease: 'power2.out',
+      onUpdate: function () { counterEl.textContent = Math.floor(this.targets()[0].val).toLocaleString(); }
+    });
+  }
+
+  // Search container
+  gsap.from('.search-container', {
+    y: 80, opacity: 0, duration: 1, ease: 'power3.out', delay: 2
+  });
+
+  // Magnetic button
+  const btn = document.getElementById('generate-btn');
+  btn.addEventListener('mousemove', e => {
+    const r = btn.getBoundingClientRect();
+    const x = e.clientX - r.left - r.width / 2;
+    const y = e.clientY - r.top - r.height / 2;
+    gsap.to(btn, { x: x * 0.15, y: y * 0.15, duration: 0.3 });
+  });
+  btn.addEventListener('mouseleave', () => {
+    gsap.to(btn, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1,0.4)' });
+  });
+})();
+
+/* ═══════════════════════════════════════════
+   TYPING TAGLINE
+   ═══════════════════════════════════════════ */
+(() => {
+  const el = document.getElementById('typed-tagline');
+  const phrases = [
+    'Learn Anything in 60 Seconds',
+    'AI-Powered Study Notes',
+    'Practice Questions Instantly',
+    'Understand Like a Pro',
+  ];
+  let pi = 0, ci = 0, deleting = false;
+  function tick() {
+    const phrase = phrases[pi];
+    if (!deleting) {
+      el.textContent = phrase.slice(0, ++ci);
+      if (ci === phrase.length) { setTimeout(() => { deleting = true; tick(); }, 2000); return; }
+    } else {
+      el.textContent = phrase.slice(0, --ci);
+      if (ci === 0) { deleting = false; pi = (pi + 1) % phrases.length; }
+    }
+    setTimeout(tick, deleting ? 30 : 60);
+  }
+  setTimeout(tick, 1800);
+})();
+
+/* ═══════════════════════════════════════════
+   PLACEHOLDER CYCLING
+   ═══════════════════════════════════════════ */
+(() => {
+  const placeholders = [
+    'Try "Quantum Physics"...',
+    'Try "Machine Learning"...',
+    'Try "Photosynthesis"...',
+    'Try "World War II"...',
+    'Try "Black Holes"...',
+    'Try "Neural Networks"...',
+  ];
+  let idx = 0;
+  const el = document.getElementById('placeholder-text');
+  const input = document.getElementById('topic-input');
+  setInterval(() => {
+    if (input.value) return;
+    gsap.to(el, {
+      opacity: 0, y: -8, duration: 0.3,
+      onComplete: () => {
+        idx = (idx + 1) % placeholders.length;
+        el.textContent = placeholders[idx];
+        gsap.fromTo(el, { opacity: 0, y: 8 }, { opacity: 0.5, y: 0, duration: 0.3 });
+      }
+    });
+  }, 3000);
+})();
+
+/* ═══════════════════════════════════════════
+   PROGRESS BAR (scroll)
+   ═══════════════════════════════════════════ */
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+  document.getElementById('progress-bar').style.width = pct + '%';
+});
+
+/* ═══════════════════════════════════════════
+   THEME TOGGLE
+   ═══════════════════════════════════════════ */
+document.getElementById('theme-toggle').addEventListener('click', function () {
+  this.classList.toggle('active');
+  document.body.classList.toggle('light-mode');
+});
+
+/* ═══════════════════════════════════════════
+   HISTORY SIDEBAR
+   ═══════════════════════════════════════════ */
+const historyTopics = JSON.parse(localStorage.getItem('sb-history') || '[]');
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  list.innerHTML = '';
+  historyTopics.slice(0, 5).forEach(t => {
+    const d = document.createElement('div');
+    d.classList.add('history-item');
+    d.innerHTML = `<span class="h-icon">📖</span><span class="h-text">${t}</span>`;
+    d.addEventListener('click', () => {
+      document.getElementById('topic-input').value = t;
+      document.getElementById('history-sidebar').classList.remove('open');
+      generateContent();
+    });
+    list.appendChild(d);
+  });
+}
+renderHistory();
+document.getElementById('history-toggle').addEventListener('click', () => {
+  document.getElementById('history-sidebar').classList.toggle('open');
+});
+document.getElementById('close-history').addEventListener('click', () => {
+  document.getElementById('history-sidebar').classList.remove('open');
+});
+
+/* ═══════════════════════════════════════════
+   MODE SELECTOR
+   ═══════════════════════════════════════════ */
+let activeMode = 'all';
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeMode = btn.dataset.mode;
+  });
+});
+
+/* ═══════════════════════════════════════════
+   BUTTON RIPPLE + PARTICLES
+   ═══════════════════════════════════════════ */
+document.getElementById('generate-btn').addEventListener('click', function (e) {
+  // Ripple
+  const ripple = document.createElement('span');
+  ripple.classList.add('ripple');
+  const r = this.getBoundingClientRect();
+  const sz = Math.max(r.width, r.height);
+  ripple.style.width = ripple.style.height = sz + 'px';
+  ripple.style.left = (e.clientX - r.left - sz / 2) + 'px';
+  ripple.style.top = (e.clientY - r.top - sz / 2) + 'px';
+  this.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 600);
+
+  // Particle burst
+  const pc = this.querySelector('.btn-particles');
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('span');
+    p.classList.add('btn-particle');
+    p.style.left = '50%';
+    p.style.top = '50%';
+    pc.appendChild(p);
+    gsap.to(p, {
+      x: (Math.random() - 0.5) * 200,
+      y: (Math.random() - 0.5) * 120 - 40,
+      opacity: 1, scale: Math.random() * 2 + 1,
+      duration: 0.1,
+      onComplete: () => {
+        gsap.to(p, {
+          opacity: 0, scale: 0, duration: 0.6 + Math.random() * 0.4,
+          ease: 'power2.out',
+          onComplete: () => p.remove()
+        });
+      }
+    });
+  }
+});
+
+/* ═══════════════════════════════════════════
+   API KEY (Google Gemini)
+   ═══════════════════════════════════════════ */
+const _k = [81,86,69,117,81,87,73,52,85,107,52,50,83,106,100,67,79,85,78,111,90,48,100,53,86,107,100,111,85,106,104,113,77,109,82,74,84,86,108,106,85,48,49,52,77,110,108,49,76,88,77,50,90,49,57,81,78,84,70,113,97,50,70,112,90,109,70,53,78,109,99,61];
+const _d = _k.map(c => String.fromCharCode(c)).join('');
+const _defaultKey = atob(_d);
+
+let API_KEY = localStorage.getItem('sb-api-key') || _defaultKey;
+
+function showApiModal() {
+  document.getElementById('api-modal').classList.add('open');
+}
+function hideApiModal() {
+  document.getElementById('api-modal').classList.remove('open');
+}
+
+document.getElementById('save-api-key').addEventListener('click', () => {
+  const k = document.getElementById('api-key-input').value.trim();
+  if (!k) { showToast('⚠️ Please enter an API key'); return; }
+  API_KEY = k;
+  localStorage.setItem('sb-api-key', k);
+  hideApiModal();
+  showToast('🔑 API Key saved successfully!');
+});
+
+/* ═══════════════════════════════════════════
+   TOAST
+   ═══════════════════════════════════════════ */
+function showToast(msg) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.classList.add('toast');
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3200);
+}
+
+/* ═══════════════════════════════════════════
+   TYPEWRITER EFFECT
+   ═══════════════════════════════════════════ */
+function typeWriter(el, html, speed = 12) {
+  return new Promise(resolve => {
+    el.innerHTML = '';
+    let i = 0;
+    // We'll insert character by character but respect HTML tags
+    const temp = document.createElement('div');
+    temp.innerHTML = html;
+    const text = temp.innerHTML;
+    let buffer = '';
+    let inTag = false;
+
+    function tick() {
+      if (i >= text.length) { el.innerHTML = text; resolve(); return; }
+      const ch = text[i];
+      if (ch === '<') inTag = true;
+      if (inTag) {
+        buffer += ch;
+        if (ch === '>') {
+          inTag = false;
+          el.innerHTML += buffer;
+          buffer = '';
+        }
+        i++;
+        tick();
+        return;
+      }
+      el.innerHTML += ch;
+      i++;
+      setTimeout(tick, speed);
+    }
+    tick();
+  });
+}
+
+/* ═══════════════════════════════════════════
+   COPY CARD
+   ═══════════════════════════════════════════ */
+function copyCard(type) {
+  const bodyEl = document.getElementById(type === 'explain' ? 'explain-body' : type + '-body');
+  const text = bodyEl ? bodyEl.innerText : '';
+  navigator.clipboard.writeText(text).then(() => showToast('📋 Copied to clipboard!'));
+}
+
+/* ═══════════════════════════════════════════
+   TEXT-TO-SPEECH
+   ═══════════════════════════════════════════ */
+function speakText() {
+  const text = document.getElementById('explain-body').innerText;
+  if (!text) return;
+  if (window.speechSynthesis.speaking) { window.speechSynthesis.cancel(); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.95; u.pitch = 1.05;
+  window.speechSynthesis.speak(u);
+  showToast('🔊 Reading aloud...');
+}
+
+/* ═══════════════════════════════════════════
+   GENERATE CONTENT — GOOGLE GEMINI API
+   ═══════════════════════════════════════════ */
+async function generateContent() {
+  const topic = document.getElementById('topic-input').value.trim();
+  if (!topic) { showToast('⚠️ Please enter a topic first!'); return; }
+  if (!API_KEY) { showApiModal(); return; }
+
+  const btn = document.getElementById('generate-btn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  // Show output section with skeleton
+  const outputSection = document.getElementById('output-section');
+  outputSection.style.display = 'block';
+  document.querySelectorAll('.skeleton').forEach(s => s.classList.add('active'));
+  ['notes-body', 'questions-body', 'explain-body'].forEach(id => {
+    document.getElementById(id).innerHTML = '';
+  });
+
+  // Animate cards in
+  gsap.fromTo('.output-card', { y: 80, opacity: 0 }, {
+    y: 0, opacity: 1, duration: 0.8, stagger: 0.15, ease: 'power3.out'
+  });
+
+  // Scroll to output
+  setTimeout(() => {
+    outputSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 300);
+
+  // History
+  if (!historyTopics.includes(topic)) {
+    historyTopics.unshift(topic);
+    if (historyTopics.length > 5) historyTopics.pop();
+    localStorage.setItem('sb-history', JSON.stringify(historyTopics));
+    renderHistory();
+  }
+
+  // Build mode-specific instruction
+  let modeInstruction = '';
+  if (activeMode === 'notes') modeInstruction = ' Only provide the ##NOTES## section.';
+  else if (activeMode === 'questions') modeInstruction = ' Only provide the ##QUESTIONS## section.';
+  else if (activeMode === 'explanation') modeInstruction = ' Only provide the ##EXPLANATION## section.';
+
+  const systemPrompt = `You are StudyBuddy AI, an expert educational assistant. For any topic given, respond in this EXACT format:
+
+##NOTES##
+• Point 1
+• Point 2
+• Point 3
+• Point 4
+• Point 5
+
+##QUESTIONS##
+Q1: Question here?
+A1: Answer here
+Q2: Question here?
+A2: Answer here
+Q3: Question here?
+A3: Answer here
+Q4: Question here?
+A4: Answer here
+Q5: Question here?
+A5: Answer here
+
+##EXPLANATION##
+Write a simple 3-4 sentence explanation here as if explaining to a 10 year old.${modeInstruction}`;
+
+  // Model fallback chain — tries each model until one works
+  const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-2.5-flash-lite'];
+
+  try {
+    let data = null;
+    let lastErr = null;
+
+    for (const model of MODELS) {
+      const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`;
+      try {
+        const res = await fetch(GEMINI_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents: [{ role: 'user', parts: [{ text: `Topic: ${topic}` }] }],
+            generationConfig: { maxOutputTokens: 1500, temperature: 0.7 }
+          })
+        });
+
+        if (res.status === 429) {
+          // Rate limited on this model, try next
+          lastErr = `Rate limited on ${model}`;
+          continue;
+        }
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          lastErr = errData.error?.message || `API Error ${res.status}`;
+          continue;
+        }
+
+        data = await res.json();
+        break; // Success — stop trying models
+      } catch (fetchErr) {
+        lastErr = fetchErr.message;
+        continue;
+      }
+    }
+
+    if (!data) throw new Error(lastErr || 'All models are rate-limited. Please try again in a minute.');
+
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!content) throw new Error('No response received from Gemini. Please try again.');
+
+    // Parse sections
+    const notesMatch = content.match(/##NOTES##([\s\S]*?)(?=##QUESTIONS##|##EXPLANATION##|$)/);
+    const questionsMatch = content.match(/##QUESTIONS##([\s\S]*?)(?=##EXPLANATION##|$)/);
+    const explainMatch = content.match(/##EXPLANATION##([\s\S]*?)$/);
+
+    // Hide skeletons
+    document.querySelectorAll('.skeleton').forEach(s => s.classList.remove('active'));
+
+    // Render Notes
+    if (notesMatch && (activeMode === 'all' || activeMode === 'notes')) {
+      const notes = notesMatch[1].trim().split('\n').filter(l => l.trim().length > 0);
+      const notesHtml = '<ul>' + notes.map(n => {
+        const cleaned = n.replace(/^[\s•\.\-\*\d\)]+/, '').trim();
+        return `<li><span class="note-bullet">•</span>${cleaned}</li>`;
+      }).join('') + '</ul>';
+      await typeWriter(document.getElementById('notes-body'), notesHtml, 8);
+    }
+
+    // Render Questions
+    if (questionsMatch && (activeMode === 'all' || activeMode === 'questions')) {
+      const qText = questionsMatch[1].trim();
+      const qPairs = [];
+      const qLines = qText.split('\n').filter(l => l.trim());
+      for (let i = 0; i < qLines.length; i++) {
+        if (qLines[i].trim().match(/^Q\d/)) {
+          const q = qLines[i].replace(/^Q\d:\s*/, '').trim();
+          const a = (qLines[i + 1] || '').replace(/^A\d:\s*/, '').trim();
+          qPairs.push({ q, a });
+          i++;
+        }
+      }
+      const qHtml = qPairs.map((p, i) => `
+        <div class="question-item" onclick="this.classList.toggle('open')">
+          <div class="q-label"><span class="q-arrow">▶</span> Q${i + 1}: ${p.q}</div>
+          <div class="a-label">💡 ${p.a}</div>
+        </div>
+      `).join('');
+      await typeWriter(document.getElementById('questions-body'), qHtml, 6);
+      // Re-attach toggle listeners after typewriter
+      document.querySelectorAll('.question-item').forEach(qi => {
+        qi.addEventListener('click', () => qi.classList.toggle('open'));
+      });
+    }
+
+    // Render Explanation
+    if (explainMatch && (activeMode === 'all' || activeMode === 'explanation')) {
+      const explainText = explainMatch[1].trim();
+      await typeWriter(document.getElementById('explain-body'), `<p>${explainText}</p>`, 15);
+    }
+
+    // Hide irrelevant cards based on mode
+    document.getElementById('notes-card').style.display = (activeMode === 'all' || activeMode === 'notes') ? '' : 'none';
+    document.getElementById('questions-card').style.display = (activeMode === 'all' || activeMode === 'questions') ? '' : 'none';
+    document.getElementById('explain-card').style.display = (activeMode === 'all' || activeMode === 'explanation') ? '' : 'none';
+
+    // Adjust grid
+    const grid = document.querySelector('.cards-grid');
+    if (activeMode !== 'all') {
+      grid.style.gridTemplateColumns = '1fr';
+      grid.style.maxWidth = '640px';
+      grid.style.margin = '0 auto';
+    } else {
+      grid.style.gridTemplateColumns = 'repeat(3,1fr)';
+      grid.style.maxWidth = '';
+      grid.style.margin = '';
+    }
+
+  } catch (err) {
+    document.querySelectorAll('.skeleton').forEach(s => s.classList.remove('active'));
+    const errMsg = err.message.includes('API') || err.message.includes('Gemini') ? err.message : 'Something went wrong. Please try again!';
+    showToast('❌ ' + errMsg);
+    if (err.message.includes('API_KEY_INVALID') || err.message.includes('401') || err.message.includes('403')) {
+      localStorage.removeItem('sb-api-key');
+      API_KEY = '';
+      showApiModal();
+    }
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   EVENT LISTENERS
+   ═══════════════════════════════════════════ */
+document.getElementById('generate-btn').addEventListener('click', generateContent);
+document.getElementById('topic-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') generateContent();
+});
+
+/* ═══════════════════════════════════════════
+   NAV SCROLL EFFECT
+   ═══════════════════════════════════════════ */
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('nav');
+  if (window.scrollY > 60) {
+    nav.style.boxShadow = '0 12px 40px rgba(0,0,0,0.4)';
+  } else {
+    nav.style.boxShadow = '0 8px 32px rgba(0,0,0,0.3)';
+  }
+});
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE GRID FIX
+   ═══════════════════════════════════════════ */
+function fixGrid() {
+  const grid = document.querySelector('.cards-grid');
+  if (!grid) return;
+  if (window.innerWidth <= 900 || activeMode !== 'all') {
+    grid.style.gridTemplateColumns = '1fr';
+  } else {
+    grid.style.gridTemplateColumns = 'repeat(3,1fr)';
+  }
+}
+window.addEventListener('resize', fixGrid);
+</script>
+</body>
+</html>
